@@ -1,0 +1,12 @@
+version: '2.0'
+services:
+  minio:
+      image: minio/minio
+      ports: ["9000:9000"]
+      command: server /data
+      environment:
+          - ENDPOINT=localhost:9000
+          - MINIO_ACCESS_KEY=BH0K3LEZSZX2KFM53LLS
+          - MINIO_SECRET_KEY=Pzfn+HrTbw+oPO8Tz5NFnj/1RbWSjH1qQ+cqCJE6
+          - STORAGE_LOCATION=eu-central-1
+          - STORAGE_USE_SSL=false

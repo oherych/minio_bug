@@ -1,0 +1,4 @@
+package: github.com/oherych/mimio_bug
+import:
+- package: github.com/minio/minio-go
+  version: ^4.0.9
