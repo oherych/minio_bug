@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/pem"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -37,11 +38,11 @@ func main() {
 }
 
 func handlerPage(writer http.ResponseWriter, request *http.Request) {
-	writer.WriteHeader(http.StatusOK)
+	defer rec(writer)
 
 	b, err := os.Open("index.html")
 	if err != nil {
-		displayError(writer, err)
+		log.Error(err)
 		return
 	}
 
@@ -49,15 +50,17 @@ func handlerPage(writer http.ResponseWriter, request *http.Request) {
 
 	writer.WriteHeader(http.StatusOK)
 	if _, err := io.Copy(writer, b); err != nil {
-		displayError(writer, err)
+		log.Error(err)
 		return
 	}
 }
 
 func handlerFile(writer http.ResponseWriter, request *http.Request) {
+	defer rec(writer)
+
 	obj, err := s3Client.GetObject(bucket, testfile, minio.GetObjectOptions{Materials: rsaKey})
 	if err != nil {
-		displayError(writer, err)
+		log.Error(err)
 		return
 	}
 
@@ -68,15 +71,18 @@ func handlerFile(writer http.ResponseWriter, request *http.Request) {
 
 	_, err = obj.Stat()
 	if err != nil {
-		displayError(writer, err)
+		log.Error(err)
+		return
+	}
+
+	b, err := ioutil.ReadAll(obj)
+	if err != nil {
+		log.Error(err)
 		return
 	}
 
 	writer.WriteHeader(http.StatusOK)
-	if _, err := io.Copy(writer, obj); err != nil {
-		displayError(writer, err)
-		return
-	}
+	writer.Write([]byte(fmt.Sprintln(len(b))))
 }
 
 func initHTTPServer() {
@@ -138,13 +144,6 @@ func testFile(size int) []byte {
 	return data
 }
 
-func displayError(writer http.ResponseWriter, err error) {
-	log.Error(err)
-
-	writer.WriteHeader(http.StatusInternalServerError)
-	writer.Write([]byte(err.Error()))
-}
-
 func createMaterials(privateKey, publicKey []byte) (*encrypt.CBCSecureMaterials, error) {
 	privateKey = keyNormalize(privateKey)
 	publicKey = keyNormalize(publicKey)
@@ -164,4 +163,10 @@ func keyNormalize(data []byte) []byte {
 	}
 
 	return block.Bytes
+}
+
+func rec(_ http.ResponseWriter) {
+	if r := recover(); r != nil {
+		log.Error(r)
+	}
 }
